@@ -73,6 +73,7 @@ public class Thread_Pool_Executor {
             for(int i = corePoolSize; i < workers.size(); i++) {
                 if(workers.get(i).isFree() && workers.get(i).getFreeTime() > keepAliveTime) {
                     System.out.println("Removed Worker ");
+                    workers.get(i).stopThread();
                     workers.remove(i);
                 }
             }
