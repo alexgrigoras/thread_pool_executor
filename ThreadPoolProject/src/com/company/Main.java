@@ -75,6 +75,6 @@ public class Main {
         System.out.println("Task count = " + thread_pool.getTaskCount());
         System.out.println("Pool size = " + thread_pool.getPoolSize());
 
-        //thread_pool.shutdown();
+        thread_pool.shutdown();
     }
 }
