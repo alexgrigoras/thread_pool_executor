@@ -1,10 +1,10 @@
 package com.company;
 
 public class Pool_Task implements Runnable {
-    private final int nr;
+    private final int id;
 
     public Pool_Task(int task_number) {
-        nr = task_number;
+        id = task_number;
     }
 
     public void run() {
@@ -13,6 +13,6 @@ public class Pool_Task implements Runnable {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        System.out.println("[" + nr + "] > Task running");
+        System.out.println("[" + id + "] > Task running");
     }
 }
