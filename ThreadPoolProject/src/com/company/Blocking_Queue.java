@@ -25,9 +25,9 @@ public class Blocking_Queue {
         return count;
     }
 
-    public synchronized void put(Object x) throws InterruptedException {
+    public synchronized void put(Object x) throws Exception {
         while (isFull()) {
-            wait();
+            throw new Exception("FullQueueException");
         }
         items[putCount] = x;
         if (++putCount == items.length) {
