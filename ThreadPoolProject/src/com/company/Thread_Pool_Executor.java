@@ -1,67 +1,140 @@
 package com.company;
 
+import java.util.concurrent.RejectedExecutionException;
+import java.util.*;
+import java.util.stream.IntStream;
+
 public class Thread_Pool_Executor {
     private final int corePoolSize;
     private final int maximumPoolSize;
     private final int keepAliveTime;
-    private final PoolWorker[] workers;
+    private final ArrayList<PoolWorker> workers;
     private final Blocking_Queue queue;
     private int taskCount;
+    HashMap<PoolWorker, Integer> workersMap;
+    private final Timer workersTimer;
 
     public Thread_Pool_Executor(int corePoolSize, int maximumPoolSize, int keepAliveTime, int queueSize) {
         this.corePoolSize = corePoolSize;
         this.maximumPoolSize = maximumPoolSize;
         this.keepAliveTime = keepAliveTime;
         queue = new Blocking_Queue(queueSize);
-        workers = new PoolWorker[maximumPoolSize];
-        taskCount = queue.size();
+        workers = new ArrayList<>(maximumPoolSize);
 
-        for (int i = 0; i < corePoolSize; i++) {
-            workers[i] = new PoolWorker();
-            workers[i].start();
-        }
+        IntStream.range(0, corePoolSize).forEach(i -> workers.add(new PoolWorker()));
+        IntStream.range(0, corePoolSize).forEach(i -> System.out.println("Added new worker " + i));
+        IntStream.range(0, corePoolSize).forEach(i -> workers.get(i).start());
+
+        this.workersTimer = new Timer();
+        workersTimer.schedule(new WorkersCheck(), 0, 1000);
     }
 
     public void execute(Runnable task) {
-        if (taskCount > corePoolSize && taskCount <= maximumPoolSize) {
-            workers[taskCount-1] = new PoolWorker();
-            workers[taskCount-1].start();
-            task.run();
-        }
+        taskCount++;
 
         synchronized (queue) {
             try {
                 queue.put(task);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+            } catch (Exception FullQueueException) {
+                if(workers.size() < maximumPoolSize) {
+                    System.out.println("Added new worker " + (workers.size()));
+                    workers.add(new PoolWorker());
+                    workers.get(workers.size() - 1).runTask(task);
+                    workers.get(workers.size() - 1).start();
+                }
+                else {
+                    taskCount--;
+                    throw new RejectedExecutionException("Rejected task");
+                }
             }
         }
     }
 
+    public int getPoolSize() {
+        return workers.size();
+    }
+
+    public int getTaskCount() {
+        return taskCount;
+    }
+
+    public void printFreeWorkers() {
+        System.out.println(workersMap);
+    }
+
     public void shutdown() {
+        IntStream.range(0, maximumPoolSize).forEach(i -> workers.get(i).stopThread());
+        workers.clear();
         System.out.println("Shutting down thread pool");
-        for (int i = 0; i < corePoolSize; i++) {
-            workers[i] = null;
+    }
+
+    private class WorkersCheck extends TimerTask {
+        public void run() {
+            for(int i = corePoolSize; i < workers.size(); i++) {
+                if(workers.get(i).isFree() && workers.get(i).getFreeTime() > keepAliveTime) {
+                    System.out.println("Removed Worker ");
+                    workers.remove(i);
+                }
+            }
         }
     }
 
     private class PoolWorker extends Thread {
+        private boolean isRunning;
+        private boolean isFree;
+        private int freeTime;
+        private Timer elapsedTime;
+
+        public PoolWorker(){
+            isRunning = true;
+            freeTime = 0;
+        }
+
+        public void stopThread(){
+            isRunning = false;
+        }
+
+        public boolean isFree() {
+            return isFree;
+        }
+
+        public int getFreeTime() {
+            return freeTime;
+        }
+
+        public void runTask(Runnable task) {
+            try {
+                task.run();
+            } catch (RuntimeException e) {
+                System.out.println("Thread pool is interrupted due to an issue: " + e.getMessage());
+            }
+        }
+
         public void run() {
-            Runnable task = null;
 
-            while (true) {
-                taskCount = queue.size();
+            while (isRunning) {
+                isFree = true;
+                this.elapsedTime = new Timer();
+                elapsedTime.schedule(new IncreaseTime(), 0, 1000);
                 try {
-                    task = (Runnable) queue.take();
+                    Runnable task = (Runnable) queue.take();
+                    isFree = false;
+                    elapsedTime.cancel();
+                    freeTime = 0;
+                    try {
+                        task.run();
+                    } catch (RuntimeException e) {
+                        System.out.println("Thread pool is interrupted due to an issue: " + e.getMessage());
+                    }
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    System.out.println("Queue is interrupted due to an issue: " + e.getMessage());
                 }
+            }
+        }
 
-                try {
-                    task.run();
-                } catch (RuntimeException e) {
-                    System.out.println("Thread pool is interrupted due to an issue: " + e.getMessage());
-                }
+        private class IncreaseTime extends TimerTask {
+            public void run() {
+                freeTime++;
             }
         }
     }
