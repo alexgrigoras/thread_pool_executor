@@ -69,6 +69,6 @@ public class Main {
         execute_tasks(thread_pool, taskDelay, 1, 100, 150);
 
         // Shutdown thread pool
-        //thread_pool.shutdown();
+        thread_pool.shutdown();
     }
 }
