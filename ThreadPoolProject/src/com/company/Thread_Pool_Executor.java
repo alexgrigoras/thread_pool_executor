@@ -112,7 +112,6 @@ public class Thread_Pool_Executor {
         }
 
         public void run() {
-
             while (isRunning) {
                 isFree = true;
                 this.elapsedTime = new Timer();
