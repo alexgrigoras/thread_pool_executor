@@ -46,7 +46,7 @@ public class Blocking_Queue {
         if(isEmpty()) {
             // If worker is in range [corePoolSize, maximumPoolSize], it can be shutdown
             if (canDie) throw new Exception("IdleWorkerShutdown");
-            // If worker is in range [corePoolSize, maximumPoolSize], it return nothing
+            // If worker is in range [0, corePoolSize], it return nothing
             else return null;
         }
 
